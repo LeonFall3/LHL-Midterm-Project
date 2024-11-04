@@ -38,7 +38,7 @@ def JSON_import(path):
     df_tags = pd.merge(df[['property_id']], df_encoded, on='property_id', how='left').fillna(0)
     df_tags.iloc[:, 1:] = df_tags.iloc[:, 1:].astype(int)
 
-    df = df_tags.set_index('property_id').join(df.set_index('property_id'), how='left')
+    df = df_tags.set_index('property_id').join(df.set_index('property_id'), how='left').reset_index()
     df = df.drop(columns='tags')
 
     #droping unneeded columns
@@ -47,6 +47,7 @@ def JSON_import(path):
     # dtypes
     df = df.convert_dtypes()
 
-
+    #dupes
+    df = df.drop_duplicates(subset='property_id', keep='first')
 
     return df
