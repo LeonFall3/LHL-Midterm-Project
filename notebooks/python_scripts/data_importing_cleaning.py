@@ -50,6 +50,7 @@ def JSON_import(path):
 
     # dtypes
     df = df.convert_dtypes()
+    df.set_index('property_id', inplace=True)
 
     # dupes
     df = df.drop_duplicates(subset="property_id", keep="first")
@@ -62,22 +63,15 @@ def JSON_import(path):
             "location.address.coordinate.lat": "coords_lat",
             "location.address.city": "city",
             "location.address.line": "address",
-            "location.street_view_url": "street_view_url",
-            "location.address.postal_code": "zip_code",
-            "location.county.name": "county",
-            "description.year_built": "year_built",
-            "description.baths_3qtr": "baths_3qtr",
             "description.sold_price": "sold_price",
             "description.baths_full": "baths_full",
             "description.name": "name",
             "description.baths_half": "baths_half",
-            "description.lot_sqft": "lot_sqft",
             "description.sqft": "sqft",
             "description.baths": "baths",
             "description.sub_type": "sub_type",
             "description.baths_1qtr": "baths_1qtr",
             "description.garage": "garage",
-            "description.stories": "stories",
             "description.beds": "beds",
             "description.type": "type",
         },
@@ -132,6 +126,13 @@ def JSON_import(path):
             "baths_1qtr",
             "name",
             "community",
+            "description.year_built",
+            "location.address.postal_code",
+            "description.stories",
+            "location.street_view_url",
+            "description.baths_3qtr",
+            "description.lot_sqft",
+            "location.county.name",
         ],
         axis=1,
     )
@@ -140,36 +141,37 @@ def JSON_import(path):
 
 
 def missing_data(df):
+    # setting the data types
     # inputing missing, but findable data
     df.at[23055, "coords_lon"] = -74.76494
     df.at[23055, "coords_lat"] = 40.23233
-    df.at[23055, "county"] = "Jones"
 
-    df.at[25085, "county"] = "Carson City"
+    df.at[22975, "address"] = "3 Hulse Street"
 
-    df.at[22975,'address'] = '3 Hulse Street'
-    
-    df.at[26960,'city'] = 'Columbus'
+    df.at[26960, "city"] = "Columbus"
 
-    df['type']=df['type'].astype(object)
+    df["type"] = df["type"].astype(object)
 
-    # droping rows with missing lat, long, and addresses
+    df.at[]
+    # dropping rows with missing lat, long, and addresses
     drop_rows = df[
-        (df["address"].isna() & (df["coords_lat"].isna() & (df["coords_lon"].isna())))
+        (df["address"].isna())
+        & (df["coords_lat"].isna())
+        & (df["coords_lon"].isna())
     ].index
     df.drop(drop_rows, inplace=True)
 
     # Fill missing values for numeric columns with mean
-    for column in df.select_dtypes(include='number').columns:
-        df[column]=df[column].astype(float)
+    for column in df.select_dtypes(include="number").columns:
+        df[column] = df[column].astype(float)
         df[column].fillna(df[column].mean(), inplace=True)
 
     # Fill missing values for categorical columns with mode
-    for column in df.select_dtypes(include='object').columns:
+    for column in df.select_dtypes(include="object").columns:
         mode_value = df[column].mode()
         df[column].fillna(mode_value, inplace=True)
 
-    mode_value = df['type'].mode()
-    df['type'].fillna(mode_value[0], inplace=True)
+    mode_value = df["type"].mode()
+    df["type"].fillna(mode_value[0], inplace=True)
 
     return df

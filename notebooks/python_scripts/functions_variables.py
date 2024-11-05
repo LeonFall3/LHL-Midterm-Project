@@ -1,9 +1,10 @@
 import time
 import pandas as pd
 import requests
+import os
 
 
-def query_google_places(
+def query_by_lat_long(
     df, api_key, radius=150, place_type="bus_stop", batch_size=10, delay=0.1
 ):
     """
@@ -21,9 +22,9 @@ def query_google_places(
     results = []
 
     for index, row in df.iterrows():
-        latitude = row["location.address.coordinate.lat"]
-        longitude = row["location.address.coordinate.lon"]
-        place_id = row["listing_id"]
+        latitude = row["coords_lat"]
+        longitude = row["coords_lon"]
+        property_id = row["property_id"]
         # Construct the API URL
         url = (
             f"https://maps.googleapis.com/maps/api/place/nearbysearch/json"
@@ -39,11 +40,55 @@ def query_google_places(
         if "results" in data:
             for place in data["results"]:
                 # Store each result with the original ID
-                results.append({"id": place_id, "place_name": place["name"]})
+                results.append({"id": property_id, "place_name": place["name"]})
         if (index + 1) % batch_size == 0:
             time.sleep(delay)
     # Convert results to DataFrame
     results_df = pd.DataFrame(results)
+    return results_df
+
+
+def get_lat_long(df, api_key, batch_size=10, delay=0.1):
+    results = []
+
+    for index, row in df.iterrows():
+        address = row["address"]
+        city = row["city"]
+        state = row["state"]
+        property_id = row["property_id"]
+
+        url = "https://places.googleapis.com/v1/places:searchText"
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": api_key,
+            "X-Goog-FieldMask": "places.location",
+        }
+        data = {"textQuery": f"{address} {city} {state}"}
+
+        response = requests.post(url, headers=headers, json=data)
+        data = response.json()
+
+        # Checking we got data and then appending to list
+        if "places" in data:
+            for place in data["places"]:
+                location = place.get("location", {})
+                # Add the property ID, latitude, and longitude to results
+                results.append(
+                    {
+                        "id": property_id,
+                        "latitude": location.get("latitude"),
+                        "longitude": location.get("longitude"),
+                    }
+                )
+        else:
+            print(f"No 'places' data found for {property_id}")
+
+        # Pausing between batches to avoid hitting API limits
+        if (index + 1) % batch_size == 0:
+            time.sleep(delay)
+
+    # Converting results to DataFrame
+    results_df = pd.DataFrame(results, columns=["id", "latitude", "longitude"])
     return results_df
 
 
