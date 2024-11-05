@@ -48,12 +48,12 @@ def JSON_import(path):
     )
     df = df.drop(columns="tags")
 
+    # dupes
+    df = df.drop_duplicates(subset="property_id", keep="first")
+
     # dtypes
     df = df.convert_dtypes()
     df.set_index("property_id", inplace=True)
-
-    # dupes
-    df = df.drop_duplicates(subset="property_id", keep="first")
 
     # correcting column names
     df.rename(
