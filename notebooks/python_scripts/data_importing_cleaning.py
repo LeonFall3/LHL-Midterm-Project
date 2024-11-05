@@ -50,7 +50,7 @@ def JSON_import(path):
 
     # dtypes
     df = df.convert_dtypes()
-    df.set_index('property_id', inplace=True)
+    df.set_index("property_id", inplace=True)
 
     # dupes
     df = df.drop_duplicates(subset="property_id", keep="first")
@@ -152,12 +152,9 @@ def missing_data(df):
 
     df["type"] = df["type"].astype(object)
 
-    df.at[]
     # dropping rows with missing lat, long, and addresses
     drop_rows = df[
-        (df["address"].isna())
-        & (df["coords_lat"].isna())
-        & (df["coords_lon"].isna())
+        (df["address"].isna()) & (df["coords_lat"].isna()) & (df["coords_lon"].isna())
     ].index
     df.drop(drop_rows, inplace=True)
 
