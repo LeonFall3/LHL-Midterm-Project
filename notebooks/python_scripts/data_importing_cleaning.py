@@ -160,13 +160,15 @@ def missing_data(df):
 
     # Fill missing values for numeric columns with mean
     for column in df.select_dtypes(include="number").columns:
-        df[column] = df[column].astype(float)
-        df[column].fillna(df[column].mean(), inplace=True)
+        if column not in ["coords_lon", "coords_lat"]:
+            df[column] = df[column].astype(float)
+            df[column].fillna(df[column].mean(), inplace=True)
 
     # Fill missing values for categorical columns with mode
     for column in df.select_dtypes(include="object").columns:
-        mode_value = df[column].mode()
-        df[column].fillna(mode_value, inplace=True)
+        if column not in ["coords_lon", "coords_lat"]:
+            mode_value = df[column].mode()
+            df[column].fillna(mode_value, inplace=True)
 
     mode_value = df["type"].mode()
     df["type"].fillna(mode_value[0], inplace=True)
