@@ -75,7 +75,7 @@ def get_lat_long(df, api_key, batch_size=10, delay=0.1):
                 # Add the property ID, latitude, and longitude to results
                 results.append(
                     {
-                        "id": property_id,
+                        "property_id": property_id,
                         "latitude": location.get("latitude"),
                         "longitude": location.get("longitude"),
                     }
@@ -88,7 +88,7 @@ def get_lat_long(df, api_key, batch_size=10, delay=0.1):
             time.sleep(delay)
 
     # Converting results to DataFrame
-    results_df = pd.DataFrame(results, columns=["id", "latitude", "longitude"])
+    results_df = pd.DataFrame(results, columns=["property_id", "latitude", "longitude"])
     return results_df
 
 
