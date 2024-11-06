@@ -8,7 +8,11 @@ import requests
 import urllib.parse
 import requests
 import time
-
+from dotenv import load_dotenv
+load_dotenv()
+import sys
+sys.path.append(r'notebooks\python_scripts')
+from API_calls import *
 
 def JSON_import(path):
     df = pd.DataFrame()
@@ -48,41 +52,80 @@ def JSON_import(path):
     )
     df = df.drop(columns="tags")
 
-    # dupes
+    # removing all dupes of property_id before making it the index
     df = df.drop_duplicates(subset="property_id", keep="first")
-
-    # dtypes
-    df = df.convert_dtypes()
     df.set_index("property_id", inplace=True)
 
-    # correcting column names
-    df.rename(
-        columns={
-            "location.address.state": "state",
-            "location.address.coordinate.lon": "coords_lon",
-            "location.address.coordinate.lat": "coords_lat",
-            "location.address.city": "city",
-            "location.address.line": "address",
-            "description.sold_price": "sold_price",
-            "description.baths_full": "baths_full",
-            "description.name": "name",
-            "description.baths_half": "baths_half",
-            "description.sqft": "sqft",
-            "description.baths": "baths",
-            "description.sub_type": "sub_type",
-            "description.baths_1qtr": "baths_1qtr",
-            "description.garage": "garage",
-            "description.beds": "beds",
-            "description.type": "type",
-        },
-        inplace=True,
-    )
+    return df
 
+
+def missing_data(df):
+    api_key='GOOGLE_API_KEY'
+
+    # setting the data types
+    df = df.convert_dtypes()
+    # inputing missing, but findable data
+    df.at[23055, "coords_lon"] = -74.76494
+    df.at[23055, "coords_lat"] = 40.23233
+
+    df.at[22975, "address"] = "3 Hulse Street"
+
+    df.at[26960, "city"] = "Columbus"
+
+    # # finding missing coords via API
+    # results_df = get_lat_long(df, api_key)
+
+
+    # # Merge results_df into df based on the index
+    # merged_df = df.merge(
+    #     results_df[['longitude', 'latitude']],
+    #     left_index =True,
+    #     right_index=True,
+    #     how='left'
+    # )
+    # # Update 'coords_lon' and 'coords_lat' 
+    # merged_df['coords_lon'] = merged_df['coords_lon'].fillna(merged_df['longitude'])
+    # merged_df['coords_lat'] = merged_df['coords_lat'].fillna(merged_df['latitude'])
+
+    # # Drop the extra columns 
+    # df = merged_df.drop(columns=['longitude', 'latitude'])
+
+    df["type"] = df["type"].astype(object)
+
+    # dropping rows with missing lat, long, and addresses
+    drop_rows = df[
+        (df["address"].isna()) & (df["coords_lat"].isna()) & (df["coords_lon"].isna())
+    ].index
+    df.drop(drop_rows, inplace=True)
+
+    # Fill missing values for numeric columns with mean
+    for column in df.select_dtypes(include="number").columns:
+        if column not in ["coords_lon", "coords_lat"]:
+            df[column] = df[column].astype(float)
+            df[column].fillna(df[column].mean(), inplace=True)
+
+    # Fill missing values for categorical columns with mode
+    for column in df.select_dtypes(include="object").columns:
+        if column not in ["coords_lon", "coords_lat"]:
+            mode_value = df[column].mode()
+            df[column].fillna(mode_value, inplace=True)
+
+    mode_value = df["type"].mode()
+    df["type"].fillna(mode_value[0], inplace=True)
+
+    # dropping land sales
+    df.drop(df[df['type'] == 'land'].index, inplace=True)
+
+    return df
+
+
+def cleaning_data(df):
+    
     # droping unneeded columns
     df = df.drop(
         [
             "list_price",
-            "sub_type",
+            "description.sub_type",
             "price_reduced_amount",
             "flags.is_subdivision",
             "flags.is_contingent",
@@ -123,8 +166,8 @@ def JSON_import(path):
             "location.county",
             "flags.is_new_construction",
             "flags.is_for_rent",
-            "baths_1qtr",
-            "name",
+            "description.baths_1qtr",
+            "description.name",
             "community",
             "description.year_built",
             "location.address.postal_code",
@@ -134,43 +177,40 @@ def JSON_import(path):
             "description.lot_sqft",
             "location.county.name",
         ],
-        axis=1,
+        axis=1,)
+    
+    # correcting column names
+    df.rename(
+        columns={
+            "location.address.state": "state",
+            "location.address.coordinate.lon": "coords_lon",
+            "location.address.coordinate.lat": "coords_lat",
+            "location.address.city": "city",
+            "location.address.line": "address",
+            "description.sold_price": "sold_price",
+            "description.baths_full": "baths_full",
+            "description.baths_half": "baths_half",
+            "description.sqft": "sqft",
+            "description.baths": "baths",
+            "description.garage": "garage",
+            "description.beds": "beds",
+            "description.type": "type",
+        },
+        inplace=True,
     )
 
-    return df
+    # cleaning type column
+    condo_lst =['condos','apartment','condo_townhome_rowhome_coop']
+    single_family_lst =['triplex_duplex','other']
+    # df.loc[df['type']in condo_lst,'type'] = 'condo'
+    # df.loc[df['type']in single_family_lst,'type'] = 'single_family'
 
+    # condo_lst =['condos','apartment','condo_townhome_rowhome_coop']
+    # single_family_lst =['triplex_duplex','other']
+    # df.loc[df['type']=='condos'|'apartment'|'condo_townhome_rowhome_coop'|'type'] = 'condo'
+    # df.loc[df['type']=='triplex_duplex'|'other','type'] = 'single_family'
 
-def missing_data(df):
-    # setting the data types
-    # inputing missing, but findable data
-    df.at[23055, "coords_lon"] = -74.76494
-    df.at[23055, "coords_lat"] = 40.23233
-
-    df.at[22975, "address"] = "3 Hulse Street"
-
-    df.at[26960, "city"] = "Columbus"
-
-    df["type"] = df["type"].astype(object)
-
-    # dropping rows with missing lat, long, and addresses
-    drop_rows = df[
-        (df["address"].isna()) & (df["coords_lat"].isna()) & (df["coords_lon"].isna())
-    ].index
-    df.drop(drop_rows, inplace=True)
-
-    # Fill missing values for numeric columns with mean
-    for column in df.select_dtypes(include="number").columns:
-        if column not in ["coords_lon", "coords_lat"]:
-            df[column] = df[column].astype(float)
-            df[column].fillna(df[column].mean(), inplace=True)
-
-    # Fill missing values for categorical columns with mode
-    for column in df.select_dtypes(include="object").columns:
-        if column not in ["coords_lon", "coords_lat"]:
-            mode_value = df[column].mode()
-            df[column].fillna(mode_value, inplace=True)
-
-    mode_value = df["type"].mode()
-    df["type"].fillna(mode_value[0], inplace=True)
+    df['type'] = df['type'].apply(lambda x: 'condo' if x in condo_lst else x)
+    df['type'] = df['type'].apply(lambda x: 'single_family' if x in single_family_lst else x)
 
     return df

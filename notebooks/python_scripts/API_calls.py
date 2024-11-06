@@ -4,7 +4,7 @@ import requests
 import os
 
 
-def query_by_lat_long(
+def bus_query_by_lat_long(
     df, api_key, radius=150, place_type="bus_stop", batch_size=10, delay=0.1
 ):
     """
@@ -55,7 +55,7 @@ def get_lat_long(df, api_key, batch_size=10, delay=0.1):
         address = row["address"]
         city = row["city"]
         state = row["state"]
-        property_id = row["property_id"]
+        property_id = index
 
         url = "https://places.googleapis.com/v1/places:searchText"
         headers = {
@@ -89,21 +89,5 @@ def get_lat_long(df, api_key, batch_size=10, delay=0.1):
 
     # Converting results to DataFrame
     results_df = pd.DataFrame(results, columns=["property_id", "latitude", "longitude"])
+    results_df.set_index('property_id',inplace=True)
     return results_df
-
-
-# def encode_tags(df):
-#     """Use this function to manually encode tags from each sale.
-#     You could also provide another argument to filter out low
-#     counts of tags to keep cardinality to a minimum.
-
-#     Args:
-#         pandas.DataFrame
-
-#     Returns:
-#         pandas.DataFrame: modified with encoded tags
-#     """
-#     tags = df["tags"].tolist()
-#     # create a unique list of tags and then create a new column for each tag
-
-#     return df
