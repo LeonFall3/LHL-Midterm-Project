@@ -61,67 +61,9 @@ def JSON_import(path):
 
     return df
 
-
-def missing_data(df):
-    api_key = "GEOCODING_API_KEY"
-
-    # setting the data types
-    df = df.convert_dtypes()
-    # inputing missing, but findable data
-    df.at[23055, "coords_lon"] = -74.76494
-    df.at[23055, "coords_lat"] = 40.23233
-
-    df.at[22975, "address"] = "3 Hulse Street"
-
-    df.at[26960, "city"] = "Columbus"
-
-    # finding missing coords via API
-    results_df = get_lat_long(df, api_key)
-
-    # Merge results_df into df based on the index
-    merged_df = df.merge(
-        results_df[["longitude", "latitude"]],
-        left_index=True,
-        right_index=True,
-        how="left",
-    )
-    # Update 'coords_lon' and 'coords_lat'
-    merged_df["coords_lon"] = merged_df["coords_lon"].fillna(merged_df["longitude"])
-    merged_df["coords_lat"] = merged_df["coords_lat"].fillna(merged_df["latitude"])
-
-    # Drop the extra columns
-    df = merged_df.drop(columns=["longitude", "latitude"])
-
-    df["type"] = df["type"].astype(object)
-
-    # dropping rows with missing lat, long, and addresses
-    drop_rows = df[
-        (df["address"].isna()) & (df["coords_lat"].isna()) & (df["coords_lon"].isna())
-    ].index
-    df.drop(drop_rows, inplace=True)
-
-    # Fill missing values for numeric columns with mean
-    for column in df.select_dtypes(include="number").columns:
-        if column not in ["coords_lon", "coords_lat"]:
-            df[column] = df[column].astype(float)
-            df[column].fillna(df[column].mean(), inplace=True)
-
-    # Fill missing values for categorical columns with mode
-    for column in df.select_dtypes(include="object").columns:
-        if column not in ["coords_lon", "coords_lat"]:
-            mode_value = df[column].mode()
-            df[column].fillna(mode_value, inplace=True)
-
-    mode_value = df["type"].mode()
-    df["type"].fillna(mode_value[0], inplace=True)
-
-    # dropping land sales
-    df.drop(df[df["type"] == "land"].index, inplace=True)
-
-    return df
-
-
 def cleaning_data(df):
+    #key for getting missing address coords
+    api_key = "GEOCODING_API_KEY"
 
     # droping unneeded columns
     df = df.drop(
@@ -181,6 +123,7 @@ def cleaning_data(df):
         ],
         axis=1,
     )
+    print('Columns Dropped')
 
     # correcting column names
     df.rename(
@@ -201,21 +144,62 @@ def cleaning_data(df):
         },
         inplace=True,
     )
+    print('Columns Renamed')
 
-    # cleaning type column
+    # cleaning column 'type'
     condo_lst = ["condos", "apartment", "condo_townhome_rowhome_coop"]
     single_family_lst = ["triplex_duplex", "other"]
-    # df.loc[df['type']in condo_lst,'type'] = 'condo'
-    # df.loc[df['type']in single_family_lst,'type'] = 'single_family'
-
-    # condo_lst =['condos','apartment','condo_townhome_rowhome_coop']
-    # single_family_lst =['triplex_duplex','other']
-    # df.loc[df['type']=='condos'|'apartment'|'condo_townhome_rowhome_coop'|'type'] = 'condo'
-    # df.loc[df['type']=='triplex_duplex'|'other','type'] = 'single_family'
 
     df["type"] = df["type"].apply(lambda x: "condo" if x in condo_lst else x)
     df["type"] = df["type"].apply(
         lambda x: "single_family" if x in single_family_lst else x
     )
+    print(r"Column 'type' grouped")
+
+    # setting the data types
+    df = df.convert_dtypes()
+    print('Set dtypes')
+
+    #dropping missing addresses
+    df = df[~df["address"].isna()]
+
+    # Creating the missing lat/long data frame
+    missing_lat_lon = df[df["coords_lat"].isna() | df["coords_lon"].isna()]
+
+    # finding missing coords via API
+    results_df = get_lat_long(df, api_key)
+    print('requested missing coords from API')
+    
+    # Update missing 'coords_lon' and 'coords_lat' with newly founded coords
+    df["coords_lon"].fillna(results_df["coords_lon"])
+    df["coords_lat"].fillna(results_df["coords_lat"])
+    
+    # Drop the extra columns
+    df = results_df.drop(columns=["coords_lon", "coords_lat"])
+    print('Merged missing coords with main data')
+
+    # dropping rows with missing lat, long, and addresses
+    drop_rows = df[
+        (df["address"].isna()) & (df["coords_lat"].isna()) & (df["coords_lon"].isna())
+    ].index
+    df.drop(drop_rows, inplace=True)
+    print('dropped rows without address and coords')
+
+    # Fill missing values for numeric columns with mean
+    for column in df.select_dtypes(include="number").columns:
+        if column not in ["coords_lon", "coords_lat"]:
+            df[column] = df[column].astype(float)
+            df[column].fillna(df[column].mean(), inplace=True)
+
+    # Fill missing values for categorical columns with mode
+    for column in df.select_dtypes(include="object").columns:
+        if column not in ["coords_lon", "coords_lat"]:
+            mode_value = df[column].mode()
+            df[column].fillna(mode_value, inplace=True)
+    print('Missing num and cat data filled with mean/mode')
+
+    # dropping land sales
+    df.drop(df[df["type"] == "land"].index, inplace=True)
+    print('dropped all land sales')
 
     return df
