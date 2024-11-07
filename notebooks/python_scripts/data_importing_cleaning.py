@@ -160,25 +160,23 @@ def cleaning_data(df):
     df = df.convert_dtypes()
     print('Set dtypes')
 
-    # # finding missing coords via API
-    # results_df = get_lat_long(df, api_key)
-    # print('requested missing coords from API')
+    #dropping missing addresses
+    df = df[~df["address"].isna()]
 
-    # # Merge results_df into df based on the index
-    # merged_df = df.merge(
-    #     results_df[["longitude", "latitude"]],
-    #     left_index=True,
-    #     right_index=True,
-    #     how="left",
-    # )
+    # Creating the missing lat/long data frame
+    missing_lat_lon = df[df["coords_lat"].isna() | df["coords_lon"].isna()]
+
+    # finding missing coords via API
+    results_df = get_lat_long(df, api_key)
+    print('requested missing coords from API')
     
-    # # Update missing 'coords_lon' and 'coords_lat' with newly founded coords
-    # merged_df["coords_lon"] = merged_df["coords_lon"].fillna(merged_df["longitude"])
-    # merged_df["coords_lat"] = merged_df["coords_lat"].fillna(merged_df["latitude"])
+    # Update missing 'coords_lon' and 'coords_lat' with newly founded coords
+    df["coords_lon"].fillna(results_df["coords_lon"])
+    df["coords_lat"].fillna(results_df["coords_lat"])
     
-    # # Drop the extra columns
-    # df = merged_df.drop(columns=["longitude", "latitude"])
-    # print('Merged missing coords with main data')
+    # Drop the extra columns
+    df = results_df.drop(columns=["coords_lon", "coords_lat"])
+    print('Merged missing coords with main data')
 
     # dropping rows with missing lat, long, and addresses
     drop_rows = df[
@@ -199,8 +197,6 @@ def cleaning_data(df):
             mode_value = df[column].mode()
             df[column].fillna(mode_value, inplace=True)
     print('Missing num and cat data filled with mean/mode')
-
-
 
     # dropping land sales
     df.drop(df[df["type"] == "land"].index, inplace=True)
