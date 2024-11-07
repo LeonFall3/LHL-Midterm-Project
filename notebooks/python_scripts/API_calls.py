@@ -1,20 +1,16 @@
 import time
 import pandas as pd
 import requests
-import os
 
 
-def bus_query_by_lat_long(
-    df, api_key, radius=150, place_type="bus_stop", batch_size=10, delay=0.1
-):
+def bus_query_by_lat_long(df, radius=150, batch_size=10, delay=0.1):
     """
-    Queries the Google Places API for each row in a DataFrame based on latitude and longitude.
+    Queries the Overpass API, which is a free open-source api, for each row in a DataFrame based on latitude and longitude.
 
     Parameters:
     df (pd.DataFrame): Input DataFrame.
-    api_key (str): Google Places API key.
     radius (int): Search radius in meters (default is 150).
-    place_type (str): Type of place to search for (default is 'bus_stop').
+    Batch_size and delay are to time release the api calls.
 
     Returns:
     pd.DataFrame: DataFrame containing the 'id' from the input DataFrame and the API response results.
@@ -27,11 +23,9 @@ def bus_query_by_lat_long(
         property_id = row["property_id"]
         # Construct the API URL
         url = (
-            f"https://maps.googleapis.com/maps/api/place/nearbysearch/json"
-            f"?location={latitude},{longitude}"
-            f"&radius={radius}"
-            f"&type={place_type}"
-            f"&key={api_key}"
+            f"https://overpass-api.de/api/interpreter?data="
+            f"[out:json];node(around:{radius},{latitude},{longitude})"
+            f'["highway"="bus_stop"];out;'
         )
 
         # Make the request to Google Places API
@@ -40,44 +34,62 @@ def bus_query_by_lat_long(
         if "results" in data:
             for place in data["results"]:
                 # Store each result with the original ID
-                results.append({"id": property_id, "place_name": place["name"]})
+                place_name = place.get("tags", {}).get("name", "Unknown")
+                results.append({"id": property_id, "place_name": place_name})
         if (index + 1) % batch_size == 0:
             time.sleep(delay)
     # Convert results to DataFrame
     results_df = pd.DataFrame(results)
+    counted_df = results_df["property_id"].value_counts().reset_index()
+    counted_df.columns = ["property_id", "busstops"]
     return results_df
 
 
-def get_lat_long(df, api_key, batch_size=10, delay=0.1):
+def get_lat_long(df, api_key, batch_size=1, delay=1):
+    """
+    This is an api call to geocode.maps to get a longitude and latitude for sales that are missing this information.
+
+    Parameters:
+    IMPORTANT: batch_size MUST BE 1 and delay MUST BE 1
+    API has a limit of 1 call/second up to 5,000 per day
+
+    df = dataframe with missing lat/longs
+    api_key = api key from geocode.maps.co
+    """  # noqa
     results = []
 
     for index, row in df.iterrows():
         address = row["address"]
+        address = address.replace(" ", "+")
         city = row["city"]
+        city = city.replace(" ", "+")
         state = row["state"]
+        state = state.replace(" ", "+")
         property_id = index
+        url = (
+            f"https://geocode.maps.co/q?"
+            f"street={address}&"
+            f"city={city}&"
+            f"state={state}&"
+            f"api_key={api_key}"
+        )
 
-        url = "https://places.googleapis.com/v1/places:searchText"
-        headers = {
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": api_key,
-            "X-Goog-FieldMask": "places.location",
-        }
-        data = {"textQuery": f"{address} {city} {state}"}
-
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.get(url)
         data = response.json()
 
         # Checking we got data and then appending to list
-        if "places" in data:
+        if data:
+            """
+            If there are multiple businesses or if the address is an apartment building it will return one for each business or person listed on their api. Grabbing the first one since we only need the lat/long.
+            """  # noqa
+            first_one = data[0]
             for place in data["places"]:
-                location = place.get("location", {})
                 # Add the property ID, latitude, and longitude to results
                 results.append(
                     {
                         "property_id": property_id,
-                        "latitude": location.get("latitude"),
-                        "longitude": location.get("longitude"),
+                        "coords_lat": first_one.get("lat"),
+                        "coords_lon": first_one.get("long"),
                     }
                 )
         else:
@@ -88,6 +100,8 @@ def get_lat_long(df, api_key, batch_size=10, delay=0.1):
             time.sleep(delay)
 
     # Converting results to DataFrame
-    results_df = pd.DataFrame(results, columns=["property_id", "latitude", "longitude"])
-    results_df.set_index('property_id',inplace=True)
+    results_df = pd.DataFrame(
+        results, columns=["property_id", "coords_lat", "coords_lon"]
+    )
+    results_df.set_index("property_id", inplace=True)
     return results_df
