@@ -65,9 +65,7 @@ def get_lat_long(df, api_key, batch_size=1, delay=1):
         data = None
         address = row["address"]
         address = address.replace(" ", "+")
-        print(address)
         city = row["city"]
-
         city = city.replace(" ", "+")
         state = row["state"]
         state = state.replace(" ", "+")
