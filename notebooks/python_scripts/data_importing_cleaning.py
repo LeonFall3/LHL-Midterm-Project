@@ -9,10 +9,13 @@ import urllib.parse
 import requests
 import time
 from dotenv import load_dotenv
+
 load_dotenv()
 import sys
-sys.path.append(r'notebooks\python_scripts')
+
+sys.path.append(r"notebooks\python_scripts")
 from API_calls import *
+
 
 def JSON_import(path):
     df = pd.DataFrame()
@@ -60,7 +63,7 @@ def JSON_import(path):
 
 
 def missing_data(df):
-    api_key='GOOGLE_API_KEY'
+    api_key = "GEOCODING_API_KEY"
 
     # setting the data types
     df = df.convert_dtypes()
@@ -72,23 +75,22 @@ def missing_data(df):
 
     df.at[26960, "city"] = "Columbus"
 
-    # # finding missing coords via API
-    # results_df = get_lat_long(df, api_key)
+    # finding missing coords via API
+    results_df = get_lat_long(df, api_key)
 
+    # Merge results_df into df based on the index
+    merged_df = df.merge(
+        results_df[["longitude", "latitude"]],
+        left_index=True,
+        right_index=True,
+        how="left",
+    )
+    # Update 'coords_lon' and 'coords_lat'
+    merged_df["coords_lon"] = merged_df["coords_lon"].fillna(merged_df["longitude"])
+    merged_df["coords_lat"] = merged_df["coords_lat"].fillna(merged_df["latitude"])
 
-    # # Merge results_df into df based on the index
-    # merged_df = df.merge(
-    #     results_df[['longitude', 'latitude']],
-    #     left_index =True,
-    #     right_index=True,
-    #     how='left'
-    # )
-    # # Update 'coords_lon' and 'coords_lat' 
-    # merged_df['coords_lon'] = merged_df['coords_lon'].fillna(merged_df['longitude'])
-    # merged_df['coords_lat'] = merged_df['coords_lat'].fillna(merged_df['latitude'])
-
-    # # Drop the extra columns 
-    # df = merged_df.drop(columns=['longitude', 'latitude'])
+    # Drop the extra columns
+    df = merged_df.drop(columns=["longitude", "latitude"])
 
     df["type"] = df["type"].astype(object)
 
@@ -114,13 +116,13 @@ def missing_data(df):
     df["type"].fillna(mode_value[0], inplace=True)
 
     # dropping land sales
-    df.drop(df[df['type'] == 'land'].index, inplace=True)
+    df.drop(df[df["type"] == "land"].index, inplace=True)
 
     return df
 
 
 def cleaning_data(df):
-    
+
     # droping unneeded columns
     df = df.drop(
         [
@@ -177,8 +179,9 @@ def cleaning_data(df):
             "description.lot_sqft",
             "location.county.name",
         ],
-        axis=1,)
-    
+        axis=1,
+    )
+
     # correcting column names
     df.rename(
         columns={
@@ -200,8 +203,8 @@ def cleaning_data(df):
     )
 
     # cleaning type column
-    condo_lst =['condos','apartment','condo_townhome_rowhome_coop']
-    single_family_lst =['triplex_duplex','other']
+    condo_lst = ["condos", "apartment", "condo_townhome_rowhome_coop"]
+    single_family_lst = ["triplex_duplex", "other"]
     # df.loc[df['type']in condo_lst,'type'] = 'condo'
     # df.loc[df['type']in single_family_lst,'type'] = 'single_family'
 
@@ -210,7 +213,9 @@ def cleaning_data(df):
     # df.loc[df['type']=='condos'|'apartment'|'condo_townhome_rowhome_coop'|'type'] = 'condo'
     # df.loc[df['type']=='triplex_duplex'|'other','type'] = 'single_family'
 
-    df['type'] = df['type'].apply(lambda x: 'condo' if x in condo_lst else x)
-    df['type'] = df['type'].apply(lambda x: 'single_family' if x in single_family_lst else x)
+    df["type"] = df["type"].apply(lambda x: "condo" if x in condo_lst else x)
+    df["type"] = df["type"].apply(
+        lambda x: "single_family" if x in single_family_lst else x
+    )
 
     return df
