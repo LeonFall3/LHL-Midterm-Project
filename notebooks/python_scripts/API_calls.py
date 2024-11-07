@@ -7,6 +7,8 @@ def bus_query_by_lat_long(df, radius=150, batch_size=10, delay=0.1):
     """
     Queries the Overpass API, which is a free open-source api, for each row in a DataFrame based on latitude and longitude.
 
+    There is no API key required.
+
     Parameters:
     df (pd.DataFrame): Input DataFrame.
     radius (int): Search radius in meters (default is 150).
@@ -28,7 +30,7 @@ def bus_query_by_lat_long(df, radius=150, batch_size=10, delay=0.1):
             f'["highway"="bus_stop"];out;'
         )
 
-        # Make the request to Google Places API
+        # Make the request to Overpass API
         response = requests.get(url)
         data = response.json()
         if "results" in data:
