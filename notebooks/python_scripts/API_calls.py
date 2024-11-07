@@ -59,17 +59,23 @@ def get_lat_long(df, api_key, batch_size=1, delay=1):
     api_key = api key from geocode.maps.co
     """  # noqa
     results = []
+    drops = []
 
     for index, row in df.iterrows():
+        data = None
         address = row["address"]
         address = address.replace(" ", "+")
+        print(address)
         city = row["city"]
+
         city = city.replace(" ", "+")
         state = row["state"]
         state = state.replace(" ", "+")
         property_id = index
+        if (int(index) + 1) % batch_size == 0:
+            time.sleep(delay)
         url = (
-            f"https://geocode.maps.co/q?"
+            f"https://geocode.maps.co/search?"
             f"street={address}&"
             f"city={city}&"
             f"state={state}&"
@@ -77,7 +83,11 @@ def get_lat_long(df, api_key, batch_size=1, delay=1):
         )
 
         response = requests.get(url)
-        data = response.json()
+        if response.status_code == 200 and response.text.strip():
+            try:
+                data = response.json()
+            except:
+                continue
 
         # Checking we got data and then appending to list
         if data:
@@ -85,25 +95,20 @@ def get_lat_long(df, api_key, batch_size=1, delay=1):
             If there are multiple businesses or if the address is an apartment building it will return one for each business or person listed on their api. Grabbing the first one since we only need the lat/long.
             """  # noqa
             first_one = data[0]
-            for place in data["places"]:
-                # Add the property ID, latitude, and longitude to results
-                results.append(
-                    {
-                        "property_id": property_id,
-                        "coords_lat": first_one.get("lat"),
-                        "coords_lon": first_one.get("long"),
-                    }
-                )
+            # Add the property ID, latitude, and longitude to results
+            results.append(
+                {
+                    "property_id": property_id,
+                    "coords_lat": first_one.get("lat"),
+                    "coords_lon": first_one.get("long"),
+                }
+            )
         else:
-            print(f"No 'places' data found for {property_id}")
-
-        # Pausing between batches to avoid hitting API limits
-        if (index + 1) % batch_size == 0:
-            time.sleep(delay)
+            drops.append(property_id)
 
     # Converting results to DataFrame
     results_df = pd.DataFrame(
         results, columns=["property_id", "coords_lat", "coords_lon"]
     )
     results_df.set_index("property_id", inplace=True)
-    return results_df
+    return results_df, drops
