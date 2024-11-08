@@ -3,18 +3,6 @@ import pandas as pd
 import requests
 import overpy
 
-# %%
-import overpy
-
-api = overpy.Overpass()
-radius = 1
-latitude = 38.043246
-longitude = -77.505373
-result = api.query(
-    f"""node(around:{radius},{latitude},{longitude})["public_transport"="platform"]["bus"="yes"];out;"""
-)
-print("Number of bus platforms found:", len(result.nodes))
-
 
 # %%
 def bus_query_by_lat_long(df, radius=750, batch_size=10, delay=0.1):
