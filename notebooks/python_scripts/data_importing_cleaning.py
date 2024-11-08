@@ -164,7 +164,7 @@ def cleaning_data(df):
     missing_lat_lon = df[df["coords_lat"].isna() | df["coords_lon"].isna()]
 
     # finding missing coords via API
-    results_df = get_lat_long(missing_lat_lon, api_key)
+    results_df, drops = get_lat_long(missing_lat_lon, api_key)
     print("requested missing coords from API")
 
     # Update missing 'coords_lon' and 'coords_lat' with newly founded coords
@@ -175,12 +175,9 @@ def cleaning_data(df):
     # df = results_df.drop(columns=["coords_lon", "coords_lat"])
     print("Merged missing coords with main data")
 
-    # dropping rows with missing lat, long, and addresses
-    drop_rows = df[
-        (df["address"].isna()) & (df["coords_lat"].isna()) & (df["coords_lon"].isna())
-    ].index
-    df.drop(drop_rows, inplace=True)
-    print("dropped rows without address and coords")
+    df = df[~df["coords_lon"].isna()]
+    df = df[~df["coords_lat"].isna()]
+    print("dropped rows without coords")
 
     df = df.convert_dtypes()
     # Fill missing values for numeric columns with mean

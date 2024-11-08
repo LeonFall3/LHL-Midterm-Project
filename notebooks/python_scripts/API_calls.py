@@ -108,4 +108,4 @@ def get_lat_long(df, api_key, batch_size=1, delay=1):
         results, columns=["property_id", "coords_lat", "coords_lon"]
     )
     results_df.set_index("property_id", inplace=True)
-    return results_df
+    return results_df, drops
