@@ -159,6 +159,7 @@ def cleaning_data(df):
 
     # dropping missing addresses
     df = df[~df["address"].isna()]
+    df = df[~df["city"].isna()]
 
     # Creating the missing lat/long data frame
     missing_lat_lon = df[df["coords_lat"].isna() | df["coords_lon"].isna()]
@@ -199,5 +200,11 @@ def cleaning_data(df):
     # dropping land sales
     df.drop(df[df["type"] == "land"].index, inplace=True)
     print("dropped all land sales")
+
+    # adding in bus stop data
+    busstops = pd.read_pickle('data/!busstops.pkl')
+
+    df = df.merge(busstops, left_index=True, right_index=True, how='left')
+    df = df.dropna(subset=['type'])
 
     return df
