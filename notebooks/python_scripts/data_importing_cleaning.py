@@ -157,10 +157,6 @@ def cleaning_data(df):
     )
     print(r"Column 'type' grouped")
 
-    # setting the data types
-    df = df.convert_dtypes()
-    print("Set dtypes")
-
     # dropping missing addresses
     df = df[~df["address"].isna()]
 
@@ -176,7 +172,7 @@ def cleaning_data(df):
     df["coords_lat"].fillna(results_df["coords_lat"])
 
     # Drop the extra columns
-    df = results_df.drop(columns=["coords_lon", "coords_lat"])
+    # df = results_df.drop(columns=["coords_lon", "coords_lat"])
     print("Merged missing coords with main data")
 
     # dropping rows with missing lat, long, and addresses
@@ -189,16 +185,19 @@ def cleaning_data(df):
     df = df.convert_dtypes()
     # Fill missing values for numeric columns with mean
     for column in df.select_dtypes(include="number").columns:
-        if column not in ["coords_lon", "coords_lat"]:
+        if column in ["coords_lon", "coords_lat"]:
             df[column] = df[column].astype(float)
-            df[column].fillna(df[column].mean(), inplace=True)
+        else:
+            df[column].fillna(df[column].mean().round(0), inplace=True)
+            df[column]
+            df[column] = df[column].astype(int)
 
     # Fill missing values for categorical columns with mode
     for column in df.select_dtypes(include="object").columns:
-        if column not in ["coords_lon", "coords_lat"]:
-            mode_value = df[column].mode()
-            df[column].fillna(mode_value, inplace=True)
-    print("Missing num and cat data filled with mean/mode")
+        mode_value = df[column].mode()
+        df[column].fillna(mode_value, inplace=True)
+        df[column]=df[column].astype(str)
+    print("Missing num and cat data filled with mean/mode and dtypes set")
 
     # dropping land sales
     df.drop(df[df["type"] == "land"].index, inplace=True)
