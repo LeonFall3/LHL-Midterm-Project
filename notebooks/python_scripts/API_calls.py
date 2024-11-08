@@ -1,9 +1,23 @@
 import time
 import pandas as pd
 import requests
+import overpy
+
+# %%
+import overpy
+
+api = overpy.Overpass()
+radius = 1
+latitude = 38.043246
+longitude = -77.505373
+result = api.query(
+    f"""node(around:{radius},{latitude},{longitude})["public_transport"="platform"]["bus"="yes"];out;"""
+)
+print("Number of bus platforms found:", len(result.nodes))
 
 
-def bus_query_by_lat_long(df, radius=150, batch_size=10, delay=0.1):
+# %%
+def bus_query_by_lat_long(df, radius=750, batch_size=10, delay=0.1):
     """
     Queries the Overpass API, which is a free open-source api, for each row in a DataFrame based on latitude and longitude.
 
@@ -18,32 +32,29 @@ def bus_query_by_lat_long(df, radius=150, batch_size=10, delay=0.1):
     pd.DataFrame: DataFrame containing the 'id' from the input DataFrame and the API response results.
     """  # noqa
     results = []
-
+    api = overpy.Overpass()
+    total_rows = len(df)
+    counter = 0
     for index, row in df.iterrows():
         latitude = row["coords_lat"]
         longitude = row["coords_lon"]
-        property_id = row["property_id"]
-        # Construct the API URL
-        url = (
-            f"https://overpass-api.de/api/interpreter?data="
-            f"[out:json];node(around:{radius},{latitude},{longitude})"
-            f'["highway"="bus_stop"];out;'
+        property_id = index
+        # Construct the API
+        result = api.query(
+            f"""node(around:{radius},{latitude},{longitude})["public_transport"="platform"]["bus"="yes"];out;"""
         )
 
         # Make the request to Overpass API
-        response = requests.get(url)
-        data = response.json()
-        if "results" in data:
-            for place in data["results"]:
-                # Store each result with the original ID
-                place_name = place.get("tags", {}).get("name", "Unknown")
-                results.append({"id": property_id, "place_name": place_name})
-        if (index + 1) % batch_size == 0:
+
+        results.append({"property_id": property_id, "busstops": len(result.nodes)})
+        counter += 1
+        progress = counter / total_rows
+        if progress in [0.2, 0.4, 0.6, 0.8, 1.0]:
+            print(f"{int(progress * 100)}% done")
+        if (int(index) + 1) % batch_size == 0:
             time.sleep(delay)
     # Convert results to DataFrame
     results_df = pd.DataFrame(results)
-    counted_df = results_df["property_id"].value_counts().reset_index()
-    counted_df.columns = ["property_id", "busstops"]
     return results_df
 
 
