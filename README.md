@@ -19,7 +19,6 @@ The goal of this project is to discover if coorelations exist between house pric
 ### Questions We Wanted Answers To
 - We established the following questions were what we were going to explore:
     - Is there a coorelation between the number of bus stops near a house and its value? 
-    - Does the state a house is located in have an impact on the value? 
     - Are there any rooms in a house that have an impact on the value of the house? Does the square footage play a role? 
     - If a listing has more tags, does that impact the value of the house? 
 ### Model Selection
@@ -35,9 +34,8 @@ The goal of this project is to discover if coorelations exist between house pric
 
 ### Question 2: Bus stops near the home
 There is no coorelation between the number of bus stops and the home value. We looked at the basic linear regression chart and none was present. We then binned the values to create buckets to see if that impacted the coorelation and it made little difference. This question always had model scores in the negatives so we left this question at model selection. 
-### Question 3: State the home is in
 
-### Question 4: Impact of rooms/square footage
+### Question 3: Impact of rooms/square footage
 
 ## Challenges 
 (discuss challenges you faced in the project)
